@@ -1,0 +1,13 @@
+{
+  "name": "冉伟股票策略工作室",
+  "short_name": "股票策略工作室",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0f172a",
+  "icons": [
+    {"src":"assets/icons/icon-192x192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"assets/icons/icon-512x512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

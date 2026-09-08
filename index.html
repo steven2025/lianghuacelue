@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32x32.png">
+<title>策略铸造台</title>
+<link rel="stylesheet" href="strategy_editor.css">
+<link rel="stylesheet" href="strategy_editor_extra.css">
+</head>
+<body>
+<header class="topbar"><div class="brand"><span class="mark">◆</span><b>策略铸造台</b><small><span class="owner-highlight">冉伟</span> 股票策略工作室</small></div><div><span class="badge">0.5 试用版</span><button id="save">保存项目</button><button class="primary" id="export">导出回测代码</button></div></header>
+<main>
+<aside class="sidebar"><h4>工作流</h4>
+<button class="nav active" data-view="language">01　代码语言</button>
+<button class="nav" data-view="rules">02　标准配置</button>
+<button class="nav" data-view="import">03　文本导入</button>
+<button class="nav" data-view="params">04　参数编辑</button>
+<button class="nav" data-view="audit">05　规则核查</button>
+<button class="nav" data-view="scenarios">06　信号试算</button>
+<button class="nav" data-view="code">07　代码预览</button>
+<button class="nav" data-view="aiReview">08　AI核查</button>
+<button class="nav" data-view="explain">09　逐段解释</button>
+<div class="offline">● 本地模式运行</div>
+</aside>
+<section id="app"></section>
+<aside class="inspector" id="inspector"></aside>
+</main>
+<div id="notice" role="status" aria-live="polite"></div>
+<script src="strategy_engine.js?v=0.5"></script>
+<script src="strategy_editor.js?v=0.7-backend-review"></script>
+</body></html>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');</script>

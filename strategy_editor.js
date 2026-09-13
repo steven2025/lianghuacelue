@@ -83,7 +83,7 @@ function render(){
   html+=section('连接配置',`<p>地址：https://api.deepseek.com/chat/completions</p><label>模型ID<input id="model" class="input" value="${esc(api.model)}"></label><p><label>API Key<input id="key" class="input" type="password" autocomplete="off" value="${esc(api.key)}" placeholder="仅在本机输入"></label></p><p><label><input id="consent" type="checkbox" ${api.consent?'checked':''}> 允许点击AI功能时发送当前策略、规则和代码给DeepSeek，可能产生接口费用</label></p><div class="actions">${button('testApi','测试连接','orange')}${button('clearKey','清除密钥')}</div><p>状态：${esc(api.status)}</p><p>网络/CORS失败不会显示为接通。密钥不保存在项目和浏览器存储。</p><a class="link" target="_blank" rel="noreferrer" href="https://api-docs.deepseek.com/api/create-chat-completion/">DeepSeek官方接口说明</a>`);
  }
  if(api.busy)html='<div class="section">正在请求DeepSeek… '+button('cancelApi','取消请求')+'</div>'+html;
- $('app').innerHTML=html;bind();if(typeof bindAiText==='function')bindAiText();
+ $('app').innerHTML=html;bind();if(typeof bindAiText==='function')bindAiText();if(typeof bindModeShell==='function')bindModeShell();
 }
 function explain(line,base){const t=line.trim();if(!t)return '分隔代码段。';if(t.startsWith('#'))return t.slice(1).trim();if(t.startsWith('def '))return '定义函数 '+t.split('(')[0].slice(4)+'。'+base;if(t==='continue')return '跳过当前项的后续处理。';if(t.startsWith('if '))return '检查条件，满足时执行下面缩进的语句。'+base;if(t.startsWith('return '))return '返回计算结果。'+base;if(t.startsWith('for '))return '逐项处理集合。'+base;if(t.startsWith('print('))return '记录日志，不等于委托已成交。';return base;}
 function explanationBlocks(s){
@@ -180,4 +180,5 @@ async function aiAction(action){
   api.status='收到有效响应';notify(action==='test'?'DeepSeek连接测试成功。':'收到DeepSeek结果，请核对原文。');
  }catch(e){api.status='本次未完成';notify(e.message);}finally{api.busy=false;render();}
 }
+globalThis.StandardActions={exportCode};
 render();

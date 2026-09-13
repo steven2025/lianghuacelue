@@ -13,7 +13,7 @@
  const switcher=document.createElement('div');switcher.className='mode-switch';switcher.setAttribute('aria-label','工作模式');
  switcher.innerHTML='<button id="mode-standard" type="button">标准模式</button><button id="mode-agent" type="button">代理模式 <span>Agent</span></button>';
  document.querySelector('.topbar').insertBefore(switcher,document.querySelector('.topbar').lastElementChild);
- document.querySelector('.badge').textContent='1.1 双模式';
+ document.querySelector('.badge').textContent='1.2 双模式';
  function persist(){project.draft=composer;project.savedAt=new Date().toISOString();try{localStorage.setItem(KEY,JSON.stringify(project));saved='已保存到此浏览器';}catch{saved='浏览器存储已满，请下载项目保存';}const el=$('agent-saved');if(el)el.textContent=saved;}
  function downloadFile(name,text){const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);}
  function currentVersion(){return project.versions.find(v=>v.id===selected)||project.versions.at(-1);}
@@ -42,10 +42,11 @@
    <aside class="ag-rail"><div class="ag-rail-title"><span class="ag-spark">✦</span><div><b>策略代理</b><small>股票 · 历史回测</small></div></div><p class="ag-rail-caption">一起把策略想法说明白</p><ol class="ag-steps">${['导入策略','逐条补充','确认方案','代码与解释'].map((x,i)=>`<li class="${i===stage?'current':i<stage?'done':''}"><span>${i<stage?'✓':i+1}</span><div>${x}<small>${['粘贴文本或上传文档','每次只回答一个问题','核对当前策略内容','下载后在掘金回测'][i]}</small></div></li>`).join('')}</ol><div class="ag-rail-actions">${btn('agent-new','＋ 新建代理策略')}${btn('agent-load','导入已保存项目')}<input hidden id="agent-project-file" type="file" accept=".json"></div><div class="ag-history"><h3>代码版本 <span>${project.versions.length}</span></h3>${project.versions.length?project.versions.map((x,i)=>`<button data-version="${escape(x.id)}" class="${v?.id===x.id?'selected':''}"><b>版本 ${i+1}</b><small>${x.kind==='repair'?'日志修复':'首次／重新生成'} · ${new Date(x.createdAt).toLocaleDateString('zh-CN')}</small></button>`).reverse().join(''):'<p>生成后自动保留最近6个版本</p>'}</div><div class="ag-rail-foot">${btn('agent-settings','连接与模板')}<small id="agent-saved">${escape(saved||'代理项目独立保存')}</small></div></aside>
    <section class="ag-conversation"><header class="ag-heading"><div><span class="ag-eyebrow">DEEPSEEK · 策略编写助手</span><h1>${escape(a?.name||'用文字描述你的股票策略')}</h1><p>${project.source?'回答会自动记录，也可以随时提出修改。':'无需填写规则表。先选择策略类型，再描述你的规则。'}</p></div><span class="ag-status"><i></i>${busy?'处理中':'代理模式'}</span></header>
    <fieldset class="ag-types"><legend>策略类型 · 先选择用途，再导入文本</legend>${Object.entries(C.types).map(([id,t])=>`<label class="${project.strategyType===id?'selected':''}"><input type="radio" name="strategy-type" value="${id}" ${project.strategyType===id?'checked':''} ${busy?'disabled':''}><span><b>${t.title}</b><small>${t.description}</small></span></label>`).join('')}</fieldset>
+   <details class="ag-confirmed"><summary>已确认规则（随项目保存） · ${project.confirmedNotes?'已记录':'可补充'}</summary><p>这里的规则会原样写入最终方案。修改后重新评估；普通问答仍自动保存在对话记录中。</p><textarea id="agent-confirmed-notes" class="ag-input" rows="5" maxlength="12000" ${busy?'disabled':''}>${escape(project.confirmedNotes)}</textarea>${btn('agent-notes-save','保存规则并继续评估',false,busy)}</details>
    ${connectionOpen?`<section class="ag-settings"><h3>服务连接</h3><label>后端地址<input id="agent-endpoint" value="${escape(endpoint)}" class="ag-input"></label><label>访问口令（仅服务要求时填写）<input id="agent-token" type="password" autocomplete="off" class="ag-input" value="${escape(access)}"></label><p>口令只在本次页面内存使用。DeepSeek密钥和私有COS模板由后端管理。</p>${btn('agent-settings-close','完成')}</section>`:''}
    <div class="ag-chat" id="agent-chat" aria-live="polite">${!project.source?`<div class="ag-welcome"><span class="ag-orb">✦</span><h2>先告诉我你的策略想法</h2><p>我会按“${escape(spec.title)}”整理相关条件。<br>需要补充时，我们一条一条说清楚。</p><div class="ag-starters"><button data-example="均线">试试当前类型示例 <span>↗</span></button><button data-example="own">我已经有一份策略文档 <span>↗</span></button></div><div class="ag-how"><span>01 阅读策略</span><span>02 逐条问答</span><span>03 确认后生成</span></div></div>`:`<article class="ag-message user"><span class="ag-avatar">你</span><div><small>策略原文</small><details><summary>${escape(project.source.slice(0,90))}${project.source.length>90?'…':''}</summary><p>${escape(project.source)}</p></details></div></article>${project.messages.map((m,i)=>`<article class="ag-message ${m.role==='user'?'user':'assistant'}"><span class="ag-avatar">${m.role==='user'?'你':'✦'}</span><div><small>${m.role==='user'?'你的补充':'策略代理'}</small><p>${escape(i===project.messages.length-1 && m.role==='assistant' && a?.question ? a.reply : m.content)}</p></div></article>`).join('')}`}
    ${a?.question?`<section class="ag-question"><span>本次只需确认这一项</span><h2>${escape(a.question.text)}</h2><div>${a.question.options.map((o,i)=>`<button data-answer="${i}" ${busy?'disabled':''}>${escape(o)}<b>↗</b></button>`).join('')}</div><small>也可以在下方用自己的话回答。</small></section>`:''}
-   ${a?.blockers.length?`<section class="ag-blocker"><h3>需要补齐的模板或数据</h3><ul>${a.blockers.map(x=>`<li>${escape(x)}</li>`).join('')}</ul><p>这些是实现条件，不需要你填写函数名。管理员补充资料后可重新评估。</p></section>`:''}
+   ${a?.blockers.length?`<section class="ag-blocker"><h3>需要补齐的模板或数据</h3><ul>${a.blockers.map(x=>`<li>${escape(x)}</li>`).join('')}</ul><p>这些是实现条件，不需要你填写函数名。这些提示不等于平台没有数据。已有接口应先核对版本和权限；行业历史映射等真实缺口补齐后重新评估。</p></section>`:''}
    ${a?.ready?`<section class="ag-ready"><b>${ready?'策略方案已整理好':'已恢复方案，需要重新评估'}</b><p>${ready?'请查看右侧策略内容，包括采用的默认值。问题全部回答后，代码会自动生成。':'问答和代码均已保留；重新评估后再确认生成。'}</p>${btn(ready?'agent-confirm':'agent-reassess',ready?(busy&&lastAction==='agent_generate'?'代码生成中…':project.confirmed?'重新生成代码':'确认方案并生成代码'):'重新评估方案',true,busy)}</section>`:''}
    ${busy?'<div class="ag-working"><span class="ag-dots">● ● ●</span> 正在整理或生成，请稍候… '+btn('agent-cancel','取消')+'</div>':''}
    ${error?`<div class="ag-error" role="alert">${escape(error)}<div>${btn('agent-retry',lastAction==='agent_assess'?'重试评估':'重试本次操作',false,busy)}</div></div>`:''}
@@ -58,6 +59,7 @@
   if(connectionOpen){
    root.querySelector('.ag-settings')?.insertAdjacentHTML('beforeend',`<p>模板来源：${escape(project.knowledgeSource||'首次评估时加载')}。${Array.isArray(project.knowledge)?project.knowledge.map(x=>escape(x.name)+'（'+escape(x.validation)+'）').join('；'):''}</p>`);
   }
+  if(project.source&&!project.assessment&&!busy)root.querySelector('.ag-composer')?.insertAdjacentHTML('beforeend',btn('agent-reassess','继续评估已有策略',true));
   bindAgent();bindModeShell();
   const chat=$('agent-chat');if(chat){chat.scrollTop=scrollToEnd?chat.scrollHeight:oldScroll;scrollToEnd=false;}
  }
@@ -69,6 +71,7 @@
  function bindAgent(){
   const on=(id,event,fn)=>{if($(id))$(id)[event]=fn;};
   root.querySelectorAll('[name="strategy-type"]').forEach(el=>el.onchange=()=>{if(busy)return;if(C.setStrategyType(project,el.value)){selected=null;tab='plan';error='';persist();renderAgent();if(project.source)request('agent_assess');}});
+  on('agent-notes-save','onclick',()=>{try{C.setConfirmedNotes(project,$('agent-confirmed-notes').value.trim());persist();renderAgent();if(project.source)request('agent_assess');}catch(e){error=e.message;renderAgent();}});
   on('agent-message','oninput',()=>{composer=$('agent-message').value;persist();});
   on('agent-message','onkeydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();submit();}});
   on('agent-send','onclick',submit);on('agent-confirm','onclick',()=>{project.confirmed=true;persist();request('agent_generate');});
@@ -93,7 +96,7 @@
   const headers={'Content-Type':'application/json'};if(access)headers.Authorization='Bearer '+access;
   const r=await fetch(endpoint,{method:'POST',headers,body:JSON.stringify(body),signal});
   let j;try{j=await r.json();}catch{throw Error('服务返回格式不正确，请检查后端地址与部署版本。');}
-  if(!r.ok||!j.ok){const msg=j.error||'服务暂时无法完成请求';if(r.status===400&&/不支持.*action|unknown action|unsupported action/i.test(msg))throw Error('云函数还是旧版本，请重新上传“双模式云函数_v1.1.zip”，并确认入口为 index.main_handler。原有标准模式接口也需保留。');throw Error(msg);}return j;
+  if(!r.ok||!j.ok){const msg=j.error||'服务暂时无法完成请求';if(r.status===400&&/不支持.*action|unknown action|unsupported action/i.test(msg))throw Error('云函数还是旧版本，请重新上传“双模式云函数_v1.2.zip”，并确认入口为 index.main_handler。原有标准模式接口也需保留。');throw Error(msg);}return j;
  }
  async function request(action,automatic=false){
   if(busy)return;

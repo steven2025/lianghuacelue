@@ -44,7 +44,7 @@
    <div class="ag-chat" id="agent-chat" aria-live="polite">${!project.source?`<div class="ag-welcome"><span class="ag-orb">✦</span><h2>先告诉我你的交易想法</h2><p>我会整理选股、买卖、仓位和回测设置。<br>需要补充时，我们一条一条说清楚。</p><div class="ag-starters"><button data-example="均线">试试均线教学示例 <span>↗</span></button><button data-example="own">我已经有一份策略文档 <span>↗</span></button></div><div class="ag-how"><span>01 阅读策略</span><span>02 逐条问答</span><span>03 确认后生成</span></div></div>`:`<article class="ag-message user"><span class="ag-avatar">你</span><div><small>策略原文</small><details><summary>${escape(project.source.slice(0,90))}${project.source.length>90?'…':''}</summary><p>${escape(project.source)}</p></details></div></article>${project.messages.map((m,i)=>`<article class="ag-message ${m.role==='user'?'user':'assistant'}"><span class="ag-avatar">${m.role==='user'?'你':'✦'}</span><div><small>${m.role==='user'?'你的补充':'策略代理'}</small><p>${escape(i===project.messages.length-1 && m.role==='assistant' && a?.question ? a.reply : m.content)}</p></div></article>`).join('')}`}
    ${a?.question?`<section class="ag-question"><span>本次只需确认这一项</span><h2>${escape(a.question.text)}</h2><div>${a.question.options.map((o,i)=>`<button data-answer="${i}" ${busy?'disabled':''}>${escape(o)}<b>↗</b></button>`).join('')}</div><small>也可以在下方用自己的话回答。</small></section>`:''}
    ${a?.blockers.length?`<section class="ag-blocker"><h3>需要补齐的模板或数据</h3><ul>${a.blockers.map(x=>`<li>${escape(x)}</li>`).join('')}</ul><p>这些是实现条件，不需要你填写函数名。管理员补充资料后可重新评估。</p></section>`:''}
-   ${a?.ready?`<section class="ag-ready"><b>${ready?'策略方案已整理好':'已恢复方案，需要重新评估'}</b><p>${ready?'请查看右侧六项内容，包括采用的默认值。确认符合你的意思后生成代码。':'问答和代码均已保留；重新评估后再确认生成。'}</p>${btn(ready?'agent-confirm':'agent-reassess',ready?(project.confirmed?'重新生成代码':'确认方案并生成代码'):'重新评估方案',true,busy)}</section>`:''}
+   ${a?.ready?`<section class="ag-ready"><b>${ready?'策略方案已整理好':'已恢复方案，需要重新评估'}</b><p>${ready?'请查看右侧六项内容，包括采用的默认值。问题全部回答后，代码会自动生成。':'问答和代码均已保留；重新评估后再确认生成。'}</p>${btn(ready?'agent-confirm':'agent-reassess',ready?(busy&&lastAction==='agent_generate'?'代码生成中…':project.confirmed?'重新生成代码':'确认方案并生成代码'):'重新评估方案',true,busy)}</section>`:''}
    ${busy?'<div class="ag-working"><span class="ag-dots">● ● ●</span> 正在整理或生成，请稍候… '+btn('agent-cancel','取消')+'</div>':''}
    ${error?`<div class="ag-error" role="alert">${escape(error)}<div>${btn('agent-retry',lastAction==='agent_assess'?'重试评估':'重试本次操作',false,busy)}</div></div>`:''}
    </div><div class="ag-composer"><label class="sr-only" for="agent-message">策略文本或补充回答</label><textarea id="agent-message" placeholder="${project.source?'回答当前问题，或直接说“把……改为……”':'例如：选择两只股票，价格站上20日均线买入，跌破均线卖出……'}" rows="3" ${busy?'disabled':''}>${escape(composer)}</textarea><div><label class="ag-upload ${busy?'disabled':''}">＋ 导入文本 / Word<input id="agent-file" type="file" accept=".txt,.md,.docx" ${busy?'disabled':''}></label><small>TXT · MD · DOCX</small>${btn('agent-send',project.source?'发送补充 ↑':'开始整理 ↑',true,busy)}</div><p>点击发送后，策略会通过后端交给DeepSeek处理。Shift + Enter换行。</p></div></section>
@@ -90,7 +90,7 @@
   const headers={'Content-Type':'application/json'};if(access)headers.Authorization='Bearer '+access;
   const r=await fetch(endpoint,{method:'POST',headers,body:JSON.stringify(body),signal});
   let j;try{j=await r.json();}catch{throw Error('服务返回格式不正确，请检查后端地址与部署版本。');}
-  if(!r.ok||!j.ok)throw Error(j.error||'服务暂时无法完成请求');return j;
+  if(!r.ok||!j.ok){const msg=j.error||'服务暂时无法完成请求';if(r.status===400&&/action|支持|代理|agent/i.test(msg))throw Error('云函数还是旧版本，请重新上传“双模式云函数_v1.0.zip”，并确认入口为 index.main_handler。原有标准模式接口也需保留。');throw Error(msg);}return j;
  }
  async function request(action,automatic=false){
   if(busy)return;
@@ -106,7 +106,7 @@
   renderAgent();const timer=setTimeout(()=>c.abort(),65000);let repairNext=false;
   try{
    const j=await post(body,c.signal);if(id!==epoch||c.signal.aborted||rev!==project.revision)return;
-   if(action==='agent_assess'){C.applyAssessment(project,j,ctx);project.knowledge=j.knowledge;project.knowledgeSource=j.knowledgeSource;tab='plan';}
+   if(action==='agent_assess'){C.applyAssessment(project,j,ctx);project.knowledge=j.knowledge;project.knowledgeSource=j.knowledgeSource;tab='plan';if(j.assessment?.ready&&j.receipt){project.confirmed=true;repairNext=true;}}
    else if(j.needsClarification){C.invalidate(project);project.messages.push({role:'assistant',content:'生成时发现需要进一步说明：\n'+j.questions.join('\n')});error='请在对话框补充上述内容，再重新确认方案。';tab='plan';}
    else{
     C.addVersion(project,j.result,action==='agent_repair'?'repair':'generate');selected=project.versions.at(-1).id;tab='code';logDraft='';
@@ -114,7 +114,7 @@
    }
    scrollToEnd=true;persist();
   }catch(e){if(id!==epoch)return;error=e.name==='AbortError'?'请求已取消或超过等待时间，回答已保存，可以重试。':e.message;if(/过期|重新评估|方案已变化/.test(error)){project.confirmed=false;project.receipt=null;lastAction='agent_assess';}}
-  finally{clearTimeout(timer);if(id===epoch){busy=false;controller=null;renderAgent();if(repairNext)await request('agent_repair',true);}}
+  finally{clearTimeout(timer);if(id===epoch){busy=false;controller=null;renderAgent();if(repairNext){repairNext=false;await request('agent_generate',true);}}}
  }
  async function importStrategy(file){
   if(!file||busy)return;const id=++epoch;busy=true;error='';controller=new AbortController();const c=controller;renderAgent();const timer=setTimeout(()=>c.abort(),65000);
@@ -122,7 +122,9 @@
    if(/\.docx$/i.test(file.name)){const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));text=(await post({action:'agent_import',name:file.name,file:btoa(binary)},c.signal)).text;}
    else if(/\.(txt|md)$/i.test(file.name)){const buffer=await file.arrayBuffer();try{text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch{text=new TextDecoder('gb18030').decode(buffer);}}
    else throw Error('支持TXT、MD和DOCX文件');
-   if(id!==epoch||c.signal.aborted)return;if(typeof text!=='string'||!text.trim()||text.length>40000)throw Error('正文为空或超过40000字');composer=text;persist();
+   if(id!==epoch||c.signal.aborted)return;if(typeof text!=='string'||!text.trim()||text.length>40000)throw Error('正文为空或超过40000字');
+   C.send(project,text);composer='';selected=null;tab='plan';scrollToEnd=true;persist();
+   busy=false;controller=null;clearTimeout(timer);renderAgent();request('agent_assess');return;
   }catch(e){if(id===epoch)error=e.name==='AbortError'?'文档读取已取消或超时':e.message;}
   finally{clearTimeout(timer);if(id===epoch){busy=false;controller=null;renderAgent();}}
  }

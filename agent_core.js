@@ -13,7 +13,7 @@
   for(const key of Object.keys(labels)){const rows=p.board.filter(x=>x?.key===key);if(rows.length!==1||typeof rows[0].content!=='string'||!['confirmed','default','missing'].includes(rows[0].status))throw Error('确认看板模块不完整');}
   if(p.question!=null&&(typeof p.question.text!=='string'||!Object.hasOwn(labels,p.question.boardKey)||!Array.isArray(p.question.options)||p.question.options.some(x=>typeof x!=='string')))throw Error('提问格式不正确');
   if(p.ready&&(p.question||p.blockers.length||p.board.some(x=>x.status==='missing')))throw Error('方案仍有待处理项');
-  if(p.dialogue){D.validate(p.dialogue);if(p.ready&&p.dialogue.rules.some(r=>r.status!=='confirmed'))throw Error('尚有未确认规则');}
+  if(p.dialogue){D.validate(p.dialogue);if(p.ready&&p.dialogue.rules.some(r=>['missing','proposed'].includes(r.status)))throw Error('尚有未确认规则');}
   return p;
  }
  function applyAssessment(s,r,ctx){if((r.assessment?.confirmedNotes||'')!==(ctx.confirmedNotes||''))throw Error('已确认规则未被服务保留，请更新云函数后重新评估');if((r.assessment?.strategyType||'trading')!==s.strategyType)throw Error('服务返回的策略类型不一致，请更新云函数后重新评估');if(ctx.dialogue&&!r.assessment?.dialogue)throw Error('云函数未支持逐条规则，请更新后重试');s.assessment=plan(r.assessment);if(r.assessment.dialogue)s.dialogue=D.validate(r.assessment.dialogue);s.receipt=r.receipt;s.assessmentContext=ctx;s.confirmed=false;

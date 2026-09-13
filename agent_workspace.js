@@ -47,7 +47,8 @@
    ${connectionOpen?`<section class="ag-settings"><h3>服务连接</h3><label>后端地址<input id="agent-endpoint" value="${escape(endpoint)}" class="ag-input"></label><label>访问口令（仅服务要求时填写）<input id="agent-token" type="password" autocomplete="off" class="ag-input" value="${escape(access)}"></label><p>口令只在本次页面内存使用。DeepSeek密钥和私有COS模板由后端管理。</p>${btn('agent-settings-close','完成')}</section>`:''}
    <div class="ag-chat" id="agent-chat" aria-live="polite">${!project.source?`<div class="ag-welcome"><span class="ag-orb">✦</span><h2>先告诉我你的策略想法</h2><p>我会按“${escape(spec.title)}”整理相关条件。<br>需要补充时，我们一条一条说清楚。</p><div class="ag-starters"><button data-example="均线">试试当前类型示例 <span>↗</span></button><button data-example="own">我已经有一份策略文档 <span>↗</span></button></div><div class="ag-how"><span>01 阅读策略</span><span>02 逐条问答</span><span>03 确认后生成</span></div></div>`:`<article class="ag-message user"><span class="ag-avatar">你</span><div><small>策略原文</small><details><summary>${escape(project.source.slice(0,90))}${project.source.length>90?'…':''}</summary><p>${escape(project.source)}</p></details></div></article>${project.messages.map((m,i)=>`<article class="ag-message ${m.role==='user'?'user':'assistant'}"><span class="ag-avatar">${m.role==='user'?'你':'✦'}</span><div><small>${m.role==='user'?'你的补充':'策略代理'}</small><p>${escape(i===project.messages.length-1 && m.role==='assistant' && a?.question ? a.reply : m.content)}</p></div></article>`).join('')}`}
    ${a?.question?`<section class="ag-question"><span>本次只需确认这一项</span><h2>${escape(a.question.text)}</h2><div>${a.question.options.map((o,i)=>`<button data-answer="${i}" ${busy?'disabled':''}>${escape(o)}<b>↗</b></button>`).join('')}</div><small>也可以在下方用自己的话回答。</small>${a.question.ruleId?btn('agent-defer','暂后处理，先问其他事项',false,busy):''}</section>`:''}
-   ${a?.blockers.length?`<section class="ag-blocker"><h3>需要补齐的模板或数据</h3><ul>${a.blockers.map(x=>`<li>${escape(x)}</li>`).join('')}</ul><p>这些是实现条件，不需要你填写函数名。这些提示不等于平台没有数据。已有接口应先核对版本和权限；行业历史映射等真实缺口补齐后重新评估。</p></section>`:''}
+   ${a?.blockers.length?`<section class="ag-blocker"><h3>需要补齐的模板或数据</h3><ul>${a.blockers.map(x=>`<li>${escape(x)}</li>`).join('')}</ul><p>这些是仍会阻止确认的实现条件，不需要你填写函数名。</p></section>`:''}
+   ${a?.advisories?.length?`<section class="ag-advisory"><h3>生成前提醒（不阻止确认）</h3><ul>${a.advisories.map(x=>`<li>${escape(x)}</li>`).join('')}</ul><p>代码可以继续生成；运行前请在掘金账户中验证接口版本、权限和历史数据覆盖。</p></section>`:''}
    ${a?.ready?`<section class="ag-ready"><b>${ready?'策略方案已整理好':'已恢复方案，需要重新评估'}</b><p>${ready?'请查看右侧策略内容，包括采用的默认值。问题全部回答后，代码会自动生成。':'问答和代码均已保留；重新评估后再确认生成。'}</p>${btn(ready?'agent-confirm':'agent-reassess',ready?(busy&&lastAction==='agent_generate'?'代码生成中…':project.confirmed?'重新生成代码':'确认方案并生成代码'):'重新评估方案',true,busy)}</section>`:''}
    ${busy?'<div class="ag-working"><span class="ag-dots">● ● ●</span> 正在整理或生成，请稍候… '+btn('agent-cancel','取消')+'</div>':''}
    ${error?`<div class="ag-error" role="alert">${escape(error)}<div>${btn('agent-retry',lastAction==='agent_assess'?'重试评估':'重试本次操作',false,busy)}</div></div>`:''}
@@ -135,6 +136,9 @@
    else if(/\.(txt|md)$/i.test(file.name)){const buffer=await file.arrayBuffer();try{text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch{text=new TextDecoder('gb18030').decode(buffer);}}
    else throw Error('支持TXT、MD和DOCX文件');
    if(id!==epoch||c.signal.aborted)return;if(typeof text!=='string'||!text.trim()||text.length>40000)throw Error('正文为空或超过40000字');
+   // 文件导入代表一套全新策略：清空旧对话、规则、确认凭证和代码版本，避免旧文本污染评估。
+   const strategyType=project.strategyType;
+   project=C.fresh(strategyType);
    C.send(project,text);composer='';selected=null;tab='plan';scrollToEnd=true;persist();
    busy=false;controller=null;clearTimeout(timer);renderAgent();request('agent_assess');return;
   }catch(e){if(id===epoch)error=e.name==='AbortError'?'文档读取已取消或超时':e.message;}
